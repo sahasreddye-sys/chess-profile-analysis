@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.plot.ly/plotly-2.29.1.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="/">♟ Chess Analytics</a>
+      <div class="search-group">
+        <input
+          type="text"
+          id="username-input"
+          class="search-input"
+          placeholder="Chess.com username"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="load-btn" class="btn-primary">Load</button>
+        <button id="refresh-btn" class="btn-icon" title="Force refresh data" aria-label="Refresh">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.76-4.24L9 6h6V0l-1.35 2.35Z" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI Strip -->
+  <div id="kpi-strip" class="kpi-strip hidden">
+    <div class="kpi-card">
+      <span class="kpi-label">Total Games</span>
+      <span class="kpi-value" id="kpi-total">—</span>
+    </div>
+    <div class="kpi-card kpi-win">
+      <span class="kpi-label">Wins</span>
+      <span class="kpi-value" id="kpi-wins">—</span>
+    </div>
+    <div class="kpi-card kpi-loss">
+      <span class="kpi-label">Losses</span>
+      <span class="kpi-value" id="kpi-losses">—</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Win Rate</span>
+      <span class="kpi-value" id="kpi-winrate">—</span>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="dashboard hidden">
+
+    <!-- Tab Bar -->
+    <nav class="tab-bar" role="tablist">
+      <button class="tab-btn active" data-tab="overview"  role="tab" aria-selected="true">Overview</button>
+      <button class="tab-btn"        data-tab="openings"  role="tab">Openings</button>
+      <button class="tab-btn"        data-tab="time"      role="tab">Time</button>
+      <button class="tab-btn"        data-tab="opponents" role="tab">Opponents</button>
+      <div class="tab-indicator" id="tab-indicator"></div>
+    </nav>
+
+    <!-- Tab Content -->
+    <main class="tab-content">
+
+      <!-- Overview -->
+      <section class="tab-pane active" id="tab-overview" role="tabpanel">
+        <div class="chart-card full" id="ch-rating-over-time"><div class="chart-skeleton"></div></div>
+        <div class="chart-row">
+          <div class="chart-card" id="ch-volatility"><div class="chart-skeleton"></div></div>
+          <div class="chart-card" id="ch-termination"><div class="chart-skeleton"></div></div>
+        </div>
+        <div class="chart-card full" id="ch-accuracy"><div class="chart-skeleton"></div></div>
+      </section>
+
+      <!-- Openings -->
+      <section class="tab-pane" id="tab-openings" role="tabpanel">
+        <div class="controls-bar">
+          <label class="slider-label">
+            Min games per opening:
+            <input type="range" id="min-games-slider" min="1" max="20" value="5">
+            <span id="min-games-val" class="slider-value">5</span>
+          </label>
+        </div>
+        <div class="chart-card full" id="ch-win-rate-opening"><div class="chart-skeleton"></div></div>
+        <div class="chart-card full" id="ch-repertoire"><div class="chart-skeleton tall"></div></div>
+        <div class="chart-card full" id="ch-phase"><div class="chart-skeleton"></div></div>
+      </section>
+
+      <!-- Time -->
+      <section class="tab-pane" id="tab-time" role="tabpanel">
+        <div class="chart-row">
+          <div class="chart-card" id="ch-time-class"><div class="chart-skeleton"></div></div>
+          <div class="chart-card" id="ch-game-length"><div class="chart-skeleton"></div></div>
+        </div>
+        <div class="chart-card full" id="ch-heatmap"><div class="chart-skeleton"></div></div>
+        <div class="chart-card full" id="ch-clock-pattern"><div class="chart-skeleton"></div></div>
+        <div id="time-pressure-row" class="metrics-row hidden">
+          <div class="metric-card">
+            <span class="metric-label">Avg time/move (normal)</span>
+            <span class="metric-value" id="tp-normal">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Avg time/move (under 30s)</span>
+            <span class="metric-value" id="tp-pressure">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Moves under time pressure</span>
+            <span class="metric-value" id="tp-count">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Opponents -->
+      <section class="tab-pane" id="tab-opponents" role="tabpanel">
+        <div class="chart-card full" id="ch-rating-gap"><div class="chart-skeleton"></div></div>
+
+        <div id="comeback-row" class="metrics-row hidden">
+          <div class="metric-card">
+            <span class="metric-label">Games Down on Material</span>
+            <span class="metric-value" id="cb-games-down">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Comeback Wins</span>
+            <span class="metric-value" id="cb-wins">—</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Comeback Rate</span>
+            <span class="metric-value" id="cb-rate">—</span>
+          </div>
+        </div>
+
+        <div class="chart-card full">
+          <div class="section-heading">Most Played Opponents</div>
+          <div id="top-opponents-table" class="table-wrap"></div>
+        </div>
+
+        <div class="chart-card full">
+          <div class="section-heading">Head-to-Head</div>
+          <select id="h2h-select" class="select-input">
+            <option value="">Select an opponent…</option>
+          </select>
+          <div id="h2h-metrics" class="metrics-row hidden" style="margin-top:1rem">
+            <div class="metric-card">
+              <span class="metric-label">Wins</span>
+              <span class="metric-value kpi-win-val" id="h2h-wins">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Losses</span>
+              <span class="metric-value kpi-loss-val" id="h2h-losses">—</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Draws</span>
+              <span class="metric-value" id="h2h-draws">—</span>
+            </div>
+          </div>
+          <div id="h2h-table" class="table-wrap" style="margin-top:1rem"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Empty / Error States -->
+  <div id="empty-state" class="state-box">
+    <div class="state-icon">♟</div>
+    <p class="state-text">Enter a Chess.com username to view performance analytics.</p>
+  </div>
+
+  <div id="error-state" class="state-box hidden">
+    <div class="state-icon" style="color:var(--loss)">⚠</div>
+    <p class="state-text" id="error-message">Something went wrong.</p>
+    <button class="btn-primary" onclick="document.getElementById('error-state').classList.add('hidden'); document.getElementById('empty-state').classList.remove('hidden')">Try again</button>
+  </div>
+
+</body>
+</html>
